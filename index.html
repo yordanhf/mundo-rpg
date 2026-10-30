@@ -179,16 +179,24 @@
     return { nombre: cfg.nombre, cols, rows, spanx, spany, centro, objetos, manchas, suelo: cfg.suelo, salidas: cfg.salidas || {} };
   }
 
+  // anclas para colocar puertas/portales dentro de una pantalla: mitad de la diagonal hacia cada esquina.
+  // en una salida: `desp: 'sup-der'` (o un par [fx, fy] en fracción de pantalla). Sin desp = centro.
+  const ANCLAS = {
+    centro: [0, 0],
+    'sup-izq': [-0.25, -0.25], 'sup-der': [0.25, -0.25],
+    'inf-izq': [-0.25, 0.25], 'inf-der': [0.25, 0.25],
+  };
+
   const AREAS = {
     campo: crearArea({
       nombre: 'Campo', tipo: 'campo', cols: 2, rows: 2, semilla: 1,
       suelo: ['#79c457', '#3f8a2c'], dens: { arv: 10, arb: 8, ped: 10, flor: 38, tufo: 65, mancha: 28 },
-      salidas: { '1,0': { a: 'cueva', sala: '0,0', etiqueta: '⛏ Entrar a la cueva' } },
+      salidas: { '1,0': { a: 'cueva', sala: '0,0', etiqueta: '⛏ Entrar a la cueva', desp: 'sup-der' } },
     }),
     cueva: crearArea({
       nombre: 'Cueva', tipo: 'mazmorra', cols: 2, rows: 1, semilla: 77,
       suelo: ['#6b6472', '#2a2533'], manchas: ['#4f4a59', '#39343f', '#5a5565'], dens: { ped: 18, tufo: 6, mancha: 16 },
-      salidas: { '0,0': { a: 'campo', sala: '1,0', etiqueta: '↩ Salir de la cueva' } },
+      salidas: { '0,0': { a: 'campo', sala: '1,0', etiqueta: '↩ Salir de la cueva', desp: 'sup-izq' } },
     }),
   };
 
@@ -197,10 +205,12 @@
   Object.keys(AREAS).forEach((k) => {
     const area = AREAS[k];
     for (const sid in area.salidas) {
+      const sal = area.salidas[sid];
       const p = sid.split(',').map(Number), c = area.centro(p[0], p[1]);
-      const sx = c[0], sy = c[1] - 8;
+      const d = (typeof sal.desp === 'string' ? ANCLAS[sal.desp] : sal.desp) || [0, 0];
+      const sx = c[0] + d[0] * vw, sy = c[1] + d[1] * vh - 8;   // desp mueve la puerta dentro de su pantalla
       area.objetos.push({ nombre: 'cueva', sx, sy, d: V.depthPx(sx, sy) });
-      area.salidas[sid].obj = { sx, sy };
+      sal.obj = { sx, sy };
     }
   });
 
