@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Mundo — prototipo</title>
+<style>
+  :root { color-scheme: light; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2d5b23; }
+  #lienzo { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: pointer; }
+
+  #ui { position: fixed; inset: 0; pointer-events: none; font: 600 14px/1.3 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #fff; }
+  .borde {
+    position: absolute; pointer-events: auto; border: 0; cursor: pointer;
+    width: 56px; height: 56px; border-radius: 16px;
+    background: rgba(32, 22, 60, .42); color: #fff; font-size: 26px; line-height: 1;
+    display: grid; place-items: center; backdrop-filter: blur(6px);
+    box-shadow: 0 6px 18px rgba(0,0,0,.25), inset 0 0 0 2px rgba(255,255,255,.35);
+    transition: transform .12s ease, background .12s ease, opacity .18s ease;
+  }
+  .borde:hover { background: rgba(60, 134, 240, .7); transform: scale(1.06); }
+  .borde:active { transform: scale(.94); }
+  .borde[hidden] { display: none; }
+  #b-arriba { top: 16px; left: 50%; transform: translateX(-50%); }
+  #b-abajo  { bottom: 16px; left: 50%; transform: translateX(-50%); }
+  #b-izq    { left: 16px; top: 50%; transform: translateY(-50%); }
+  #b-der    { right: 16px; top: 50%; transform: translateY(-50%); }
+
+  #titulo { position: absolute; top: 14px; left: 16px; background: rgba(32,22,60,.4); padding: 8px 12px; border-radius: 12px; backdrop-filter: blur(6px); }
+  #titulo small { display: block; font-weight: 500; opacity: .85; margin-top: 2px; }
+  #ayuda { position: absolute; bottom: 14px; left: 16px; background: rgba(32,22,60,.4); padding: 8px 12px; border-radius: 12px; backdrop-filter: blur(6px); max-width: 60vw; }
+  #mini { position: absolute; top: 14px; right: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(32,22,60,.4); padding: 8px; border-radius: 12px; backdrop-filter: blur(6px); }
+  #mini i { width: 22px; height: 16px; border-radius: 4px; background: rgba(255,255,255,.22); }
+  #mini i.on { background: #ffd23f; }
+  #aviso { position: fixed; inset: 0; display: grid; place-items: center; background: #2d5b23; color: #fff; font: 600 16px/1.5 system-ui; text-align: center; padding: 24px; }
+  #aviso code { background: rgba(0,0,0,.3); padding: 2px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<canvas id="lienzo"></canvas>
+<div id="ui" aria-hidden="true">
+  <div id="titulo">Mundo — prototipo<small>4 pantallas · personaje y arte del juego</small></div>
+  <div id="mini" title="pantalla actual"><i></i><i></i><i></i><i></i></div>
+  <div id="ayuda">Clic para caminar · Flechas en los bordes para cambiar de pantalla</div>
+  <button class="borde" id="b-arriba" hidden aria-label="arriba">▲</button>
+  <button class="borde" id="b-abajo"  hidden aria-label="abajo">▼</button>
+  <button class="borde" id="b-izq"    hidden aria-label="izquierda">◀</button>
+  <button class="borde" id="b-der"    hidden aria-label="derecha">▶</button>
+</div>
+<div id="aviso">cargando…</div>
+
+<!-- MOTOR (vendorizado, en ./motor/): nucleo + arte del escenario + personaje. Solo dependen de nucleo.js. -->
+<script src="./motor/nucleo.js"></script>
+<script src="./motor/arte-escenario.js"></script>
+<script src="./motor/arte-personaje.js"></script>
+
+<script>
+/* =============================================================================
+ * Mundo — prototipo (un solo archivo + el arte real del juego cargado arriba)
+ * -----------------------------------------------------------------------------
+ * Motor isométrico propio (vendorizado en ./motor/, ver README.md). Proyecto independiente.
+ * Aquí solo está lo nuevo:
+ *   - mundo CUADRADO: el césped llena toda la pantalla (nunca se ve el rombo)
+ *   - 4 pantallas con PASO-POR-PANTALLA: cada cuadrante desplaza la cámara una
+ *     pantalla exacta; solo ves la pantalla donde estás y las 4 son distintas
+ *   - personaje = el guardião del juego, caminando hacia donde haces clic
+ * ========================================================================== */
+(function () {
+  'use strict';
+  const aviso = document.getElementById('aviso');
+  const FZ = window.FZ, V = FZ && FZ.visual && FZ.visual.cartoon, A = V && V.A;
+  if (!V || !A || !A.guardiao || !A.arvore) {
+    aviso.innerHTML = 'No se pudo cargar el motor.<br>Abrí este proyecto con un servidor local:<br><br><code>npx serve .</code><br><br>y entrá a <code>index.html</code> (el <code>file://</code> directo puede bloquear los scripts de <code>motor/</code>).';
+    return;
+  }
+  const ease = V.ease.out;   // ¡OJO! en el juego V.ease es un OBJETO { out, inOut, ... }, no una función
+
+  /* ============================== raster: SVG -> bitmap ============================== */
+  let host = null;
+  function medir(inner) {
+    if (!host) { host = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); host.setAttribute('width', '10'); host.setAttribute('height', '10'); host.style.cssText = 'position:absolute;left:-9999px;top:-9999px;visibility:hidden'; document.body.appendChild(host); }
+    host.innerHTML = '<g>' + inner + '</g>';
+    let b; try { b = host.firstChild.getBBox(); } catch (e) { b = { x: -20, y: -40, width: 40, height: 44 }; }
+    host.innerHTML = '';
+    return { x: b.x, y: b.y, w: b.width, h: b.height };
+  }
+  const sprites = {}, bmps = {};
+  function definir(nombre, construir, esc) {
+    const out = construir(); esc = esc || 1;
+    const svg = esc !== 1 ? `<g transform="scale(${esc})">${out.svg}</g>` : out.svg;
+    const pad = (out.pad != null ? out.pad : 6) * esc;
+    let bb = medir((out.defs ? '<defs>' + out.defs + '</defs>' : '') + svg);
+    if (!(bb.w > 0) || !(bb.h > 0)) bb = { x: -2, y: -2, w: 4, h: 4 };
+    bb = { x: Math.floor(bb.x - pad), y: Math.floor(bb.y - pad), w: Math.ceil(bb.w + pad * 2) + 1, h: Math.ceil(bb.h + pad * 2) + 1 };
+    sprites[nombre] = { svg, defs: out.defs || '', bb };
+  }
+  function rasterizar(sp, s) {
+    const W = Math.max(1, Math.round(sp.bb.w * s)), H = Math.max(1, Math.round(sp.bb.h * s));
+    const texto = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="${sp.bb.x} ${sp.bb.y} ${W / s} ${H / s}">` + (sp.defs ? '<defs>' + sp.defs + '</defs>' : '') + sp.svg + '</svg>';
+    return new Promise((ok) => {
+      const url = URL.createObjectURL(new Blob([texto], { type: 'image/svg+xml' }));
+      const img = new Image();
+      img.onload = () => { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(img, 0, 0, W, H); URL.revokeObjectURL(url); ok(cv); };
+      img.onerror = () => { URL.revokeObjectURL(url); ok(document.createElement('canvas')); };
+      img.src = url;
+    });
+  }
+  function prepararTodos(s) { return Promise.all(Object.keys(sprites).map((n) => rasterizar(sprites[n], s).then((cv) => { bmps[n] = cv; }))); }
+
+  /* ============================== sprites (arte del juego) ============================== */
+  for (let i = 0; i < 6; i++) definir('tufo' + i, () => A.tufo(i * 7 + 1));
+  for (let i = 0; i < 6; i++) definir('flor' + i, () => A.flores(i * 13 + 3));
+  for (let i = 0; i < 6; i++) definir('pedra' + i, () => A.pedra(i * 5 + 2, i < 3 ? 0.9 : 1.4));
+  const BUSH = [['#4fbf4a', null], ['#3ea85a', '#ff9ac4'], ['#5cc443', null], ['#6bd36b', '#ffd23f']];
+  BUSH.forEach((b, i) => definir('arb' + i, () => A.arbusto(b[0], b[1], i * 9 + 3, 1)));
+  const ARB = [];
+  for (const p of ['verde', 'lima', 'escura', 'maca']) for (const s of [2, 7]) { const nm = 'arv_' + p + '_' + s; definir(nm, () => A.arvore(p, s, 1)); ARB.push(nm); }
+  const ESC = A.GUARDIAO_ESCALA || 0.62;
+  ['anda1', 'anda2', 'atento'].forEach((pose) => definir('g_' + pose, () => A.guardiao(pose), ESC));
+
+  /* ============================== lienzo + dimensiones ============================== */
+  const cv = document.getElementById('lienzo'), ctx = cv.getContext('2d');
+  const Z = 1.6, PAD = 40;           // zoom FIJO (tamaño cómodo del personaje)
+  let W = 0, H = 0, dpr = 1, RS = 0, cw = 0, ch = 0, vw = 0, vh = 0;
+  function leerDims() { W = innerWidth; H = innerHeight; dpr = Math.min(window.devicePixelRatio || 1, 2.5); vw = W / Z; vh = H / Z; }
+  leerDims();
+
+  /* ============================== mundo cuadrado (4 pantallas) ==============================
+   * Mundo cuadrado FIJO en px de mundo, grande para cubrir 2×2 pantallas con margen.
+   * Cada pantalla mide vw×vh (= el viewport en px de mundo) y los 4 centros están
+   * separados EXACTAMENTE una pantalla: así teselan sin solaparse ni asomar el vecino. */
+  const SPANX = 2 * vw + 300, SPANY = 2 * vh + 300;   // tamaño del mundo (según la ventana inicial)
+  const centro = (qx, qy) => [SPANX / 2 + (qx - 0.5) * vw, SPANY / 2 + (qy - 0.5) * vh];
+  const sem = V.rng(20260430);
+
+  const objetos = [];   // { nombre, sx, sy, d }
+  function coloca(nombre, sx, sy) { objetos.push({ nombre, sx, sy, d: V.depthPx(sx, sy) }); }
+  const INI = centro(0, 0);
+  const lejos = (sx, sy) => Math.hypot(sx - INI[0], sy - INI[1]) > 90;
+  for (let i = 0; i < 40; i++) { const sx = sem.r(70, SPANX - 70), sy = sem.r(70, SPANY - 70); if (lejos(sx, sy)) coloca(sem.pick(ARB), sx, sy); }
+  for (let i = 0; i < 30; i++) coloca('arb' + (i % 4), sem.r(50, SPANX - 50), sem.r(50, SPANY - 50));
+  for (let i = 0; i < 40; i++) coloca('pedra' + (i % 6), sem.r(30, SPANX - 30), sem.r(30, SPANY - 30));
+  for (let i = 0; i < 150; i++) coloca('flor' + (i % 6), sem.r(10, SPANX - 10), sem.r(10, SPANY - 10));
+  for (let i = 0; i < 260; i++) coloca('tufo' + (i % 6), sem.r(10, SPANX - 10), sem.r(10, SPANY - 10));
+  const manchas = [];
+  for (let i = 0; i < 110; i++) manchas.push({ sx: sem.r(-60, SPANX + 60), sy: sem.r(-60, SPANY + 60), rx: sem.r(22, 50), cor: sem.pick(['#5fb23e', '#3f8a2c', '#6fc24e', '#58a838']) });
+
+  /* ============================== cámara ============================== */
+  const cam = { x: INI[0], y: INI[1], z: Z, tween: null };
+  let quad = { qx: 0, qy: 0 }, listo = false;
+  const DX = (wx) => (wx - cam.x) * cam.z * dpr + cw / 2;
+  const DY = (wy) => (wy - cam.y) * cam.z * dpr + ch / 2;
+  const mundo = (sx, sy) => [(sx - W / 2) / cam.z + cam.x, (sy - H / 2) / cam.z + cam.y];
+
+  function redimensionar() {
+    leerDims();
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    cv.width = cw = Math.round(W * dpr); cv.height = ch = Math.round(H * dpr);
+    cam.z = Z;
+    const nr = Math.round(Z * dpr * 100) / 100;
+    if (nr !== RS) { RS = nr; if (listo) prepararTodos(RS); }   // solo re-rasteriza si cambió el DPR
+    const c = centro(quad.qx, quad.qy); cam.x = c[0]; cam.y = c[1]; cam.tween = null;   // re-encuadra la pantalla actual
+  }
+  window.addEventListener('resize', redimensionar);
+
+  /* ============================== personaje (guardião del juego) ============================== */
+  const heroi = { x: INI[0], y: INI[1], ax: null, ay: null, mirando: 1, andando: false };
+  const VEL = 190;
+  cv.addEventListener('pointerdown', (e) => {
+    if (cam.tween) return;   // en plena transición de pantalla no se camina
+    const r = cv.getBoundingClientRect();
+    const w = mundo(e.clientX - r.left, e.clientY - r.top);
+    heroi.ax = V.clamp(w[0], PAD, SPANX - PAD);
+    heroi.ay = V.clamp(w[1], PAD, SPANY - PAD);
+  });
+
+  /* ============================== botones de borde ============================== */
+  const bot = { arriba: document.getElementById('b-arriba'), abajo: document.getElementById('b-abajo'), izq: document.getElementById('b-izq'), der: document.getElementById('b-der') };
+  const mini = document.getElementById('mini').children;
+  function irA(qx, qy) {
+    if (qx < 0 || qx > 1 || qy < 0 || qy > 1 || cam.tween) return;
+    quad = { qx, qy };
+    const c = centro(qx, qy);
+    cam.tween = { x0: cam.x, y0: cam.y, x1: c[0], y1: c[1], t0: performance.now(), ms: 560 };
+    heroi.ax = heroi.ay = null;   // corta la caminata: el personaje viajará con el mapa al centro de la nueva pantalla
+    actualizarBotones();
+  }
+  function actualizarBotones() {
+    bot.izq.hidden = quad.qx === 0; bot.der.hidden = quad.qx === 1;
+    bot.arriba.hidden = quad.qy === 0; bot.abajo.hidden = quad.qy === 1;
+    const idx = quad.qy * 2 + quad.qx;
+    for (let i = 0; i < 4; i++) mini[i].className = i === idx ? 'on' : '';
+  }
+  bot.izq.onclick = () => irA(quad.qx - 1, quad.qy);
+  bot.der.onclick = () => irA(quad.qx + 1, quad.qy);
+  bot.arriba.onclick = () => irA(quad.qx, quad.qy - 1);
+  bot.abajo.onclick = () => irA(quad.qx, quad.qy + 1);
+
+  /* ============================== dibujo ============================== */
+  function sprite(nombre, wx, wy, bobY, flip) {
+    const sp = sprites[nombre], bmp = bmps[nombre]; if (!sp || !bmp || !bmp.width) return;
+    const s = RS, X = DX(wx), Y = DY(wy) + (bobY || 0) * s;
+    const ox = sp.bb.x * s, oy = sp.bb.y * s, w = sp.bb.w * s, h = sp.bb.h * s;
+    if (X + ox > cw || X + ox + w < 0 || Y + oy > ch || Y + oy + h < 0) return;
+    if (flip) { ctx.save(); ctx.translate(X, Y); ctx.scale(-1, 1); ctx.drawImage(bmp, ox, oy, w, h); ctx.restore(); }
+    else ctx.drawImage(bmp, X + ox, Y + oy, w, h);
+  }
+  function suelo() {
+    const g = ctx.createRadialGradient(cw / 2, ch * 0.42, 10, cw / 2, ch * 0.42, Math.max(cw, ch) * 0.75);
+    g.addColorStop(0, '#79c457'); g.addColorStop(1, '#3f8a2c');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
+    const s = RS; ctx.globalAlpha = 0.5;
+    for (const m of manchas) {
+      const X = DX(m.sx), Y = DY(m.sy);
+      if (X < -80 || X > cw + 80 || Y < -80 || Y > ch + 80) continue;
+      ctx.fillStyle = m.cor; ctx.beginPath(); ctx.ellipse(X, Y, m.rx * s, m.rx * 0.5 * s, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  let ultimo = 0;
+  function cuadro(ts) {
+    const dt = Math.min(0.05, (ts - ultimo) / 1000 || 0); ultimo = ts;
+    if (cam.tween) {
+      const tw = cam.tween, k = V.clamp((ts - tw.t0) / tw.ms, 0, 1), e = ease(k);
+      cam.x = tw.x0 + (tw.x1 - tw.x0) * e; cam.y = tw.y0 + (tw.y1 - tw.y0) * e;
+      if (k >= 1) cam.tween = null;
+    }
+    heroi.andando = false;
+    if (heroi.ax != null) {
+      const dx = heroi.ax - heroi.x, dy = heroi.ay - heroi.y, dist = Math.hypot(dx, dy);
+      if (dist < 2) { heroi.ax = heroi.ay = null; }
+      else {
+        const paso = Math.min(dist, VEL * dt);
+        heroi.x += (dx / dist) * paso; heroi.y += (dy / dist) * paso;
+        heroi.andando = true;
+        if (Math.abs(dx) > 0.5) heroi.mirando = dx < 0 ? -1 : 1;
+      }
+    }
+    // al cambiar de pantalla, el personaje va montado en el centro de la cámara:
+    // se mueve junto con el mapa y queda en el centro de la nueva habitación
+    if (cam.tween) { heroi.x = cam.x; heroi.y = cam.y; heroi.andando = false; }
+    suelo();
+    const lista = objetos.slice();
+    lista.push({ heroi: true, d: V.depthPx(heroi.x, heroi.y) });
+    lista.sort((a, b) => a.d - b.d);
+    const bob = heroi.andando ? -Math.abs(Math.sin(ts / 110)) * 2 : 0;
+    const pose = heroi.andando ? (Math.floor(ts / 170) % 2 ? 'anda1' : 'anda2') : 'atento';
+    for (const o of lista) {
+      if (o.heroi) sprite('g_' + pose, heroi.x, heroi.y, bob, heroi.mirando < 0);
+      else sprite(o.nombre, o.sx, o.sy);
+    }
+    requestAnimationFrame(cuadro);
+  }
+
+  /* ============================== arranque ============================== */
+  redimensionar();
+  actualizarBotones();
+  prepararTodos(RS).then(() => { listo = true; aviso.remove(); requestAnimationFrame(cuadro); });
+})();
+</script>
+</body>
+</html>
