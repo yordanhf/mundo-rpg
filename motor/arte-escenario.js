@@ -2,7 +2,7 @@
  * Mundo — MOTOR / arte del escenario (césped, flores, rocas, arbustos, árboles)
  * -----------------------------------------------------------------------------
  * Vendorizado de un proyecto isométrico previo: solo las funciones que usa este
- * juego (arvore, arbusto, flores, tufo, pedra). Depende únicamente de nucleo.js.
+ * juego (arbol, arbusto, flores, tufo, piedra). Depende únicamente de nucleo.js.
  * Cada función devuelve { svg, defs, pad } con la ancla (0,0) en el pie.
  * ========================================================================== */
 (function (raiz) {
@@ -12,14 +12,14 @@
   const A = (V.A = V.A || {});
   const { sh, n2, smooth } = V;
 
-  /* ============================== ÁRVORES ============================== */
+  /* ============================== ÁRBOLES ============================== */
   const PALETAS = {
-    verde: { c: '#5cc443', fruto: null }, lima: { c: '#8fd645', fruto: null }, escura: { c: '#3ea85a', fruto: null },
-    rosa: { c: '#ff9ac4', fruto: '#ffffff' }, laranja: { c: '#ffb238', fruto: null }, maca: { c: '#4fbf4a', fruto: '#ff4b4b' },
+    verde: { c: '#5cc443', fruto: null }, lima: { c: '#8fd645', fruto: null }, oscura: { c: '#3ea85a', fruto: null },
+    rosa: { c: '#ff9ac4', fruto: '#ffffff' }, naranja: { c: '#ffb238', fruto: null }, manzana: { c: '#4fbf4a', fruto: '#ff4b4b' },
   };
-  A.arvore = function (tipo, semente, tam) {
+  A.arbol = function (tipo, semilla, tam) {
     const a = V.arte();
-    const r = V.rng(semente || 1);
+    const r = V.rng(semilla || 1);
     const s = tam || 1;
     const Pt = PALETAS[tipo] || PALETAS.verde;
     a.sombra(4 * s, 2, 30 * s, 11 * s, 0.38, 4);
@@ -32,7 +32,7 @@
     a.add(`<g fill="${sh(c, -0.38)}">${B.map(([x, y, rr]) => `<circle cx="${n2(x)}" cy="${n2(y + 3)}" r="${n2(rr)}"/>`).join('')}</g>`);
     for (const [x, y, rr] of B) a.add(`<circle cx="${n2(x)}" cy="${n2(y - 1)}" r="${n2(rr * 0.95)}" fill="${a.rg([[0, sh(c, 0.6)], [0.5, sh(c, 0.12)], [1, c, 0]], 0.38, 0.3, 0.72)}"/>`);
     const clC = a.clip(B.map(([x, y, rr]) => V.ell(x, y + 3, rr, rr)).join(''));
-    // a sombra da copa é um retângulo recortado pela copa, mais largo que ela (±70 contra ~±52): fora da MEDIDA da caixa
+    // la sombra de la copa es un rectángulo recortado por la copa, más ancho que ella (±70 frente a ~±52): fuera de la MEDIDA de la caja
     const sombraCopa = `<rect x="${-70 * s}" y="${cy - 10 * s}" width="${140 * s}" height="${60 * s}" fill="${a.lg([[0, '#1a3f40', 0], [1, '#1a3f40', 0.42]])}"/>`;
     a.add(`<g clip-path="${clC}">${sombraCopa}`);
     a.add(`<g fill="none" stroke="${sh(c, 0.75)}" stroke-opacity=".5" stroke-width="${n2(3 * s)}">${B.filter((b) => b[1] > cy).map(([x, y, rr]) => `<path d="M${n2(x - rr * 0.75)},${n2(y + rr * 0.55)}A${n2(rr)},${n2(rr)} 0 0 0 ${n2(x + rr * 0.75)},${n2(y + rr * 0.55)}"/>`).join('')}</g></g>`);
@@ -48,14 +48,14 @@
     o.medida = o.svg.replace(sombraCopa, '');
     return o;
   };
-  A.arbusto = function (cor, flor, semente, tam) {
+  A.arbusto = function (color, flor, semilla, tam) {
     const a = V.arte();
-    const r = V.rng(semente || 3);
+    const r = V.rng(semilla || 3);
     const s = tam || 1;
     a.sombra(3 * s, 1, 24 * s, 8 * s, 0.34, 3);
     const B = [[-12 * s, -12 * s, 13 * s], [10 * s, -12 * s, 14 * s], [0, -22 * s, 14 * s], [-2 * s, -8 * s, 13 * s]];
-    a.add(`<g fill="${sh(cor, -0.38)}">${B.map(([x, y, rr]) => `<circle cx="${n2(x)}" cy="${n2(y + 2)}" r="${n2(rr)}"/>`).join('')}</g>`);
-    for (const [x, y, rr] of B) a.add(`<circle cx="${n2(x)}" cy="${n2(y - 1)}" r="${n2(rr * 0.94)}" fill="${a.rg([[0, sh(cor, 0.6)], [0.55, sh(cor, 0.1)], [1, cor, 0]], 0.38, 0.3, 0.72)}"/>`);
+    a.add(`<g fill="${sh(color, -0.38)}">${B.map(([x, y, rr]) => `<circle cx="${n2(x)}" cy="${n2(y + 2)}" r="${n2(rr)}"/>`).join('')}</g>`);
+    for (const [x, y, rr] of B) a.add(`<circle cx="${n2(x)}" cy="${n2(y - 1)}" r="${n2(rr * 0.94)}" fill="${a.rg([[0, sh(color, 0.6)], [0.55, sh(color, 0.1)], [1, color, 0]], 0.38, 0.3, 0.72)}"/>`);
     if (flor) for (let i = 0; i < 7; i++) {
       const b = r.pick(B), ang = r() * Math.PI * 2, rr = r() * b[2] * 0.7;
       const x = b[0] + Math.cos(ang) * rr, y = b[1] + Math.sin(ang) * rr - 2;
@@ -63,36 +63,36 @@
     }
     return a.out(8);
   };
-  A.flores = function (semente) {
+  A.flores = function (semilla) {
     const a = V.arte();
-    const r = V.rng(semente || 9);
-    const cor = r.pick(['#ff6fa8', '#ffd23f', '#ffffff', '#b98cff', '#ff8a5c', '#6fd3ff']);
+    const r = V.rng(semilla || 9);
+    const color = r.pick(['#ff6fa8', '#ffd23f', '#ffffff', '#b98cff', '#ff8a5c', '#6fd3ff']);
     a.sombra(1, 1, 12, 4, 0.25, 2);
     for (let i = 0; i < 5; i++) {
       const x = (r() - 0.5) * 18, h = 10 + r() * 9;
       a.add(`<path d="M${n2(x * 0.4)},0Q${n2(x * 0.7)},${n2(-h * 0.5)} ${n2(x)},${n2(-h)}" stroke="#3fa83a" stroke-width="1.8" fill="none" stroke-linecap="round"/>`);
-      for (let k = 0; k < 5; k++) { const t = (k / 5) * Math.PI * 2; a.add(`<circle cx="${n2(x + Math.cos(t) * 2.6)}" cy="${n2(-h + Math.sin(t) * 2.6)}" r="2.2" fill="${cor}"/>`); }
-      a.add(`<circle cx="${n2(x)}" cy="${n2(-h)}" r="1.6" fill="${cor === '#ffd23f' ? '#ff8a1a' : '#ffd23f'}"/>`);
+      for (let k = 0; k < 5; k++) { const t = (k / 5) * Math.PI * 2; a.add(`<circle cx="${n2(x + Math.cos(t) * 2.6)}" cy="${n2(-h + Math.sin(t) * 2.6)}" r="2.2" fill="${color}"/>`); }
+      a.add(`<circle cx="${n2(x)}" cy="${n2(-h)}" r="1.6" fill="${color === '#ffd23f' ? '#ff8a1a' : '#ffd23f'}"/>`);
     }
-    a.add(`<path d="${V.folha(9, 5)}" fill="#4cb847" transform="rotate(-50)"/><path d="${V.folha(9, 5)}" fill="#45ad42" transform="rotate(50)"/>`);
+    a.add(`<path d="${V.hoja(9, 5)}" fill="#4cb847" transform="rotate(-50)"/><path d="${V.hoja(9, 5)}" fill="#45ad42" transform="rotate(50)"/>`);
     return a.out(4);
   };
-  A.tufo = function (semente) {
+  A.tufo = function (semilla) {
     const a = V.arte();
-    const r = V.rng(semente || 4);
+    const r = V.rng(semilla || 4);
     let d = '';
     for (let i = 0; i < 7; i++) { const x = (i - 3) * 2.4, h = 9 + r() * 8, b = (i - 3) * 1.6; d += `M${n2(x)},0Q${n2(x + b * 0.4)},${n2(-h * 0.6)} ${n2(x + b)},${n2(-h)}`; }
     a.add(`<path d="${d}" stroke="#3e9a34" stroke-width="3.4" fill="none" stroke-linecap="round"/>`);
     a.add(`<path d="${d}" stroke="#8fdc55" stroke-width="1.8" fill="none" stroke-linecap="round" transform="translate(-.5 -.5)"/>`);
     return a.out(3);
   };
-  A.pedra = function (semente, tam) {
+  A.piedra = function (semilla, tam) {
     const a = V.arte();
-    const r = V.rng(semente || 2);
+    const r = V.rng(semilla || 2);
     const s = tam || 1;
     a.sombra(3, 2, 16 * s, 6 * s, 0.35, 2.5);
     const d = smooth([[-15 * s, 0], [-13 * s, -9 * s], [-4 * s, -15 * s], [8 * s, -14 * s], [15 * s, -6 * s], [14 * s, 1 * s], [0, 4 * s]].map(([x, y]) => [x + (r() - 0.5) * 3, y + (r() - 0.5) * 2]));
-    a.volume(d, '#b8c2d0', { box: [-15 * s, -15 * s, 30 * s, 19 * s], claro: 0.6, escuro: -0.42, rimCor: '#e8f4ff' });
+    a.volume(d, '#b8c2d0', { box: [-15 * s, -15 * s, 30 * s, 19 * s], claro: 0.6, oscuro: -0.42, rimColor: '#e8f4ff' });
     return a.out(5);
   };
 })(typeof window !== 'undefined' ? window : globalThis);

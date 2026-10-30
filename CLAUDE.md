@@ -10,6 +10,9 @@ pueblos) se entra por un portal. Ver `README.md` para la estructura y cómo crec
   "tú" (y "vosotros" en plural), "quieres", "puedes", "tienes que", "vale", "¿quieres que…?".
   **Evitar el voseo latinoamericano** ("vos", "tenés", "querés", "probá", "decime") y "acá/allá";
   usar "aquí/ahí/allí", "ahora", "prueba", "dime".
+- **Todo en español, nada de portugués.** El motor viene de un proyecto en portugués (SolRanch),
+  pero aquí TODO queda traducido: comentarios, cadenas y también los nombres de código (funciones,
+  parámetros, claves). Al traer código nuevo de `ranchegame`, traducirlo entero antes de usarlo.
 - **Git:** hacer `commit`/`push` SOLO cuando el usuario lo pida. Dejar los cambios sin commitear
   y ofrecer hacerlo; esperar su confirmación.
 
