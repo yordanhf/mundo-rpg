@@ -42,9 +42,11 @@ Orden de carga (en `index.html`): `nucleo.js` → `arte-escenario.js` → `arte-
 ## Qué tocar
 
 En `index.html`:
-- `SPANX`/`SPANY`, `centro()` → tamaño del mundo y los 4 cuadrantes.
-- bloque "sprites" y "mundo cuadrado" → qué objetos hay y dónde (semilla fija = mundo reproducible).
-- `Z` → zoom; `VEL` → velocidad al caminar.
+- **`COLS` / `ROWS`** → tamaño del mapa en pantallas (p. ej. `3, 3` o `4, 2`). Es lo único que
+  hay que cambiar para agrandar el mapa: mundo, botones de borde, minimapa y densidad del
+  escenario se adaptan solos.
+- bloque "sprites" y "mapa de pantallas" → qué objetos hay y dónde (semilla fija = mundo reproducible).
+- `Z` → zoom; `VEL` → velocidad al caminar; `MARGEN` → césped alrededor del mapa.
 
 En `motor/` está el arte; podés agregar más funciones (p. ej. más poses del personaje o
 más elementos de escenario) siguiendo el mismo patrón.
