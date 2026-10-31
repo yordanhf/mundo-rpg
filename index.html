@@ -73,7 +73,7 @@
   const aviso = document.getElementById('aviso');
   const FZ = window.FZ, V = FZ && FZ.visual && FZ.visual.cartoon, A = V && V.A;
   if (!V || !A || !A.guardian || !A.arbol) {
-    aviso.innerHTML = 'No se pudo cargar el motor.<br>Abrí este proyecto con un servidor local:<br><br><code>npx serve .</code><br><br>y entrá a <code>index.html</code> (el <code>file://</code> directo puede bloquear los scripts de <code>motor/</code>).';
+    aviso.innerHTML = 'No se pudo cargar el motor.<br>Abre este proyecto con un servidor local:<br><br><code>npx serve .</code><br><br>y entra a <code>index.html</code> (el <code>file://</code> directo puede bloquear los scripts de <code>motor/</code>).';
     return;
   }
   const ease = V.ease.out;   // ¡OJO! en el motor V.ease es un OBJETO { out, inOut, ... }, no una función
@@ -221,7 +221,7 @@
   /* ============================== cámara + personaje ============================== */
   const ini0 = actual.area.centro(0, 0);
   const cam = { x: ini0[0], y: ini0[1], z: Z, tween: null };
-  const heroi = { x: ini0[0], y: ini0[1], ax: null, ay: null, mirando: 1, andando: false };
+  const heroe = { x: ini0[0], y: ini0[1], ax: null, ay: null, mirando: 1, andando: false };
   const VEL = 190;
   let trans = null, fade = 0, listo = false;   // trans = transición de portal; fade = 0..1 (negro)
 
@@ -250,8 +250,8 @@
       const b = sprites[sal.sprite || 'cueva'].bb;
       if (w[0] >= sal.obj.sx + b.x && w[0] <= sal.obj.sx + b.x + b.w && w[1] >= sal.obj.sy + b.y && w[1] <= sal.obj.sy + b.y + b.h) { irPortal(); return; }
     }
-    heroi.ax = V.clamp(w[0], PAD, actual.area.spanx - PAD);
-    heroi.ay = V.clamp(w[1], PAD, actual.area.spany - PAD);
+    heroe.ax = V.clamp(w[0], PAD, actual.area.spanx - PAD);
+    heroe.ay = V.clamp(w[1], PAD, actual.area.spany - PAD);
   });
 
   /* ============================== controles (bordes + portal + minimapa) ============================== */
@@ -272,7 +272,7 @@
     actual.qx = qx; actual.qy = qy;
     const c = a.centro(qx, qy);
     cam.tween = { x0: cam.x, y0: cam.y, x1: c[0], y1: c[1], t0: performance.now(), ms: 560 };
-    heroi.ax = heroi.ay = null;   // el personaje viaja con el mapa al centro de la nueva pantalla
+    heroe.ax = heroe.ay = null;   // el personaje viaja con el mapa al centro de la nueva pantalla
     actualizarBotones();
   }
 
@@ -281,7 +281,7 @@
     const sal = salidaActual();
     if (!sal || trans || cam.tween) return;
     trans = { t0: performance.now(), ms: 520, sal, hecho: false };
-    heroi.ax = heroi.ay = null;
+    heroe.ax = heroe.ay = null;
     actualizarBotones();
   }
   function aplicarPortal(sal) {
@@ -290,7 +290,7 @@
     actual.qx = p[0]; actual.qy = p[1];
     const c = actual.area.centro(actual.qx, actual.qy);
     cam.x = c[0]; cam.y = c[1]; cam.tween = null;
-    heroi.x = c[0]; heroi.y = c[1]; heroi.ax = heroi.ay = null;
+    heroe.x = c[0]; heroe.y = c[1]; heroe.ax = heroe.ay = null;
     montarMinimapa();
   }
 
@@ -348,27 +348,27 @@
       if (k >= 1) cam.tween = null;
     }
 
-    heroi.andando = false;
-    if (!trans && !cam.tween && heroi.ax != null) {
-      const dx = heroi.ax - heroi.x, dy = heroi.ay - heroi.y, dist = Math.hypot(dx, dy);
-      if (dist < 2) { heroi.ax = heroi.ay = null; }
+    heroe.andando = false;
+    if (!trans && !cam.tween && heroe.ax != null) {
+      const dx = heroe.ax - heroe.x, dy = heroe.ay - heroe.y, dist = Math.hypot(dx, dy);
+      if (dist < 2) { heroe.ax = heroe.ay = null; }
       else {
         const paso = Math.min(dist, VEL * dt);
-        heroi.x += (dx / dist) * paso; heroi.y += (dy / dist) * paso;
-        heroi.andando = true;
-        if (Math.abs(dx) > 0.5) heroi.mirando = dx < 0 ? -1 : 1;
+        heroe.x += (dx / dist) * paso; heroe.y += (dy / dist) * paso;
+        heroe.andando = true;
+        if (Math.abs(dx) > 0.5) heroe.mirando = dx < 0 ? -1 : 1;
       }
     }
-    if (cam.tween) { heroi.x = cam.x; heroi.y = cam.y; }   // viaja con el mapa en el pan
+    if (cam.tween) { heroe.x = cam.x; heroe.y = cam.y; }   // viaja con el mapa en el pan
 
     suelo();
     const lista = actual.area.objetos.slice();
-    lista.push({ heroi: true, d: V.depthPx(heroi.x, heroi.y) });
+    lista.push({ heroe: true, d: V.depthPx(heroe.x, heroe.y) });
     lista.sort((a, b) => a.d - b.d);
-    const bob = heroi.andando ? -Math.abs(Math.sin(ts / 110)) * 2 : 0;
-    const pose = heroi.andando ? (Math.floor(ts / 170) % 2 ? 'anda1' : 'anda2') : 'atento';
+    const bob = heroe.andando ? -Math.abs(Math.sin(ts / 110)) * 2 : 0;
+    const pose = heroe.andando ? (Math.floor(ts / 170) % 2 ? 'anda1' : 'anda2') : 'atento';
     for (const o of lista) {
-      if (o.heroi) sprite('g_' + pose, heroi.x, heroi.y, bob, heroi.mirando < 0);
+      if (o.heroe) sprite('g_' + pose, heroe.x, heroe.y, bob, heroe.mirando < 0);
       else sprite(o.nombre, o.sx, o.sy);
     }
     if (fade > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fade + ')'; ctx.fillRect(0, 0, cw, ch); }

@@ -13,6 +13,11 @@ pueblos) se entra por un portal. Ver `README.md` para la estructura y cómo crec
 - **Todo en español, nada de portugués.** El motor viene de un proyecto en portugués (SolRanch),
   pero aquí TODO queda traducido: comentarios, cadenas y también los nombres de código (funciones,
   parámetros, claves). Al traer código nuevo de `ranchegame`, traducirlo entero antes de usarlo.
+  **Regla permanente y proactiva:** cada vez que se detecte portugués (en cualquier archivo, al
+  revisar, al traer código o al editar), se traduce al español en el acto, incluidos los
+  identificadores (p. ej. `heroi`→`heroe`, `semente`→`semilla`). Tras traducir, verificar con el
+  smoke test en Node (`node` cargando `motor/` + render de todas las poses/rarezas/tipos) y un
+  barrido de residuos, porque `node --check` no detecta referencias a identificadores mal escritos.
 - **Git:** hacer `commit`/`push` SOLO cuando el usuario lo pida. Dejar los cambios sin commitear
   y ofrecer hacerlo; esperar su confirmación.
 
