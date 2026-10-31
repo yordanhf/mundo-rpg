@@ -54,7 +54,7 @@
   const TRAJES = {
     // el Free (encargo del dueño, 19/oct: "el mercenario que viene por defecto lo hacemos free"): el mercenario gris de
     // siempre, el estándar de todos (la paleta BASE)
-    free: { color: {}, cab: 'capucha', hombro: 'remiendo', pecho: 'chaleco', bolsa: true, cicatriz: true, capa: [null, 0, 'rasgada', null] },
+    free: { color: {}, cab: 'capucha', hombro: 'remiendo', pecho: 'chaleco', bolsa: true, capa: [null, 0, 'rasgada', null] },
     // el Común, el Escudero (encargo del dueño, 19/oct: "cambiar el aspecto del Común" y luego "vamos a crear otro para el común"):
     // la capucha marrón cálida, el pañuelo rojo, la camisa clara bajo el chaleco, el pantalón azul pizarra y el broquel de madera
     // a la espalda; el remiendo, la bolsa de monedas y la cicatriz siguen
@@ -204,7 +204,7 @@
 
   // Las rarezas, ahora como PRESETS (combinaciones con nombre) sobre el catálogo. Mezclar es libre.
   const PRESETS = {
-    free:       { cab: 'capucha_gris',   pecho: 'chaleco_gris',    hombro: 'remiendo', legs: 'pantalon_gris',   feet: 'bota_gris',    capa: 'ninguna_rasgada', arma: 'espada_base',   escudo: 'ninguno', extras: { bolsa: true, cicatriz: true } },
+    free:       { cab: 'capucha_gris',   pecho: 'chaleco_gris',    hombro: 'remiendo', legs: 'pantalon_gris',   feet: 'bota_gris',    capa: 'ninguna_rasgada', arma: 'espada_base',   escudo: 'ninguno', extras: { bolsa: true } },
     comun:      { cab: 'capucha_marron', pecho: 'chaleco_marron',  hombro: 'remiendo', legs: 'pantalon_azul',   feet: 'bota_comun',   capa: 'ninguna_rasgada', arma: 'espada_base',   escudo: 'broquel', extras: { bolsa: true, cicatriz: true, pocasPintas: true } },
     incomun:    { cab: 'capucha_verde',  pecho: 'chaleco_verde',   hombro: 'cuero',    legs: 'pantalon_verde',  feet: 'bota_incomun', capa: 'verde_rasgada',   arma: 'espada_base',   escudo: 'ninguno', extras: { correa: true } },
     rara:       { cab: 'yelmo_acero',    pecho: 'sobreveste_azul', hombro: 'placa_acero',   legs: 'pantalon_rara',   feet: 'bota_rara',  capa: 'azul_recta',   arma: 'espada_base',   escudo: 'ninguno', extras: { cicatriz: true } },

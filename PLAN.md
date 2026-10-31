@@ -205,12 +205,24 @@ Refactor **solo visual** en `motor/arte-personaje.js`, verificado byte a byte (l
 - Pendiente para Fase 2: que cada pieza-ítem traiga sus propios colores (hoy algunos colores
   compartidos —guarda/gema/brillo— los aporta la pieza "dueña", coordinado dentro de un preset).
 
-### Fase 2 — Modelo de ítems y atributos (según el MUD)
-- Ítem = `{ id, nombre, tipo (arma/armadura/mochila/material), apariencia→id visual, slots[],
-  hit/damage/critChanceBonus/critPower (armas), absorb/deflect (armadura), bulk, value,
-  durability/maxDurability, isUnarmed }`. Catálogo inicial = la tabla de arriba, en español.
-- `Combatant` del jugador en JS: stats/skills, HP/MP, equipo por slot, manos, mochila, oro, XP, nivel.
-- Inventario con bulk (manos pool 2, mochila con capacidad), funda, armadura en mano.
+### Fase 2 — Modelo de ítems y atributos (según el MUD)  🔨 EN CURSO
+Hecho (primer ladrillo, `datos/items.js`, verificado en Node):
+- Esquema de ítem `{ id, nombre, tipo (arma/armadura/mochila/material), apariencia→id de pieza
+  visual en `A.GUARDIAN_CAT`, ranura, slots[] (BodySlot del MUD), hit/damage/critChanceBonus/
+  critPower (armas), absorb/deflect (armadura), bulk, valor, durabilidadMax, natural }`.
+- **Catálogo inicial en español** = el set de Millford (Puños, Cuchillo, Daga, Espada corta, set de
+  cuero rústico de 6 piezas, Petate del viajero, Piel de rata) con los stats exactos del MUD.
+- Puente **ítems → aspecto** (`D.equipoVisual`): parte del aspecto base del humano (free sin cicatriz,
+  `D.ASPECTO_BASE`) y sustituye cada ranura equipada por la `apariencia` del ítem.
+- **Totales de combate** (`D.totalesCombate`): suma Absorb/Deflect (tope 100 cada una) + stats del arma.
+- La cicatriz se quitó del humano base (sigue en los presets legados `comun`/`rara`).
+
+Pendiente en Fase 2:
+- `Personaje` en JS: stats/skills, HP/MP, equipo por ranura, manos, mochila, oro, XP, nivel.
+- Inventario con bulk (manos pool 2, mochila con capacidad), funda, armadura en mano; durabilidad en runtime.
+- **Decisión de arte (abierta):** el set de cuero y las 3 armas reutilizan piezas visuales de la Fase 1
+  como placeholder (un gorro usa la capucha marrón, las armas comparten la espada base). ¿Diseñamos
+  arte propia para los ítems mundanos, o sirve el placeholder de momento?
 
 ### Fase 3 — Economía: el oro
 Oro del jugador + HUD. Comprar 100% / vender 25% (mín 1, tope 50). Botín de NPCs al cadáver.
