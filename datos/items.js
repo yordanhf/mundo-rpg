@@ -52,7 +52,11 @@
 
     // ---- Mochila y materiales ----
     petate:    { id: 'petate', nombre: 'Petate del viajero', tipo: 'mochila', apariencia: null, capacidad: 2, bulk: 0, valor: 10, durabilidadMax: 0 },
-    piel_rata: { id: 'piel_rata', nombre: 'Piel de rata', tipo: 'material', apariencia: null, bulk: 0.25, valor: 8, durabilidadMax: 0 },
+    piel_rata:       { id: 'piel_rata', nombre: 'Piel de rata', tipo: 'material', apariencia: null, bulk: 0.25, valor: 8, durabilidadMax: 0 },
+    piel_ciervo:     { id: 'piel_ciervo', nombre: 'Piel de ciervo', tipo: 'material', apariencia: null, bulk: 0.5, valor: 15, durabilidadMax: 0 },
+    piel_bestia:     { id: 'piel_bestia', nombre: 'Piel de bestia', tipo: 'material', apariencia: null, bulk: 0.75, valor: 25, durabilidadMax: 0 },
+    piel_serpiente:  { id: 'piel_serpiente', nombre: 'Piel de serpiente', tipo: 'material', apariencia: null, bulk: 0.25, valor: 12, durabilidadMax: 0 },
+    ala_murcielago:  { id: 'ala_murcielago', nombre: 'Ala de murciélago', tipo: 'material', apariencia: null, bulk: 0.25, valor: 6, durabilidadMax: 0 },
   };
   D.ITEMS = ITEMS;
 

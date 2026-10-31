@@ -231,12 +231,19 @@ Hecho (segundo ladrillo, `datos/personaje.js`, verificado en Node, 27 casos):
 Pendiente en Fase 2:
 - Durabilidad en runtime (se gasta al golpear/recibir); reparación (herrero, Fase 5).
 - Cargar el `Personaje` desde/hacia SQLite (depende de Fase 0).
+- **Inventario = MENÚ (no visual):** la mochila es un contenedor que **no se ve** en el mundo; se
+  accede tipo menú. El **inventario es una pantalla/menú** que lista todo el equipo puesto (por
+  ranura) y el contenido de la mochila. (Decisión del autor, 31/oct; implementar más adelante.)
 - **Decisión de arte (abierta):** el set de cuero y las 3 armas reutilizan piezas visuales de la Fase 1
   como placeholder (un gorro usa la capucha marrón, las armas comparten la espada base). Arte propia
   de los ítems mundanos: pendiente para una pasada visual más adelante.
 
 ### Fase 3 — Economía: el oro
-Oro del jugador + HUD. Comprar 100% / vender 25% (mín 1, tope 50). Botín de NPCs al cadáver.
+Oro del jugador + HUD. Comprar 100% / vender 25% (mín 1, tope 50).
+- **Botín (iniciado):** cada bicho suelta un material al morir (rata→piel, etc.; en `datos/items.js`
+  y `datos/npcs.js`). Al ganar, aparece un saquito en el suelo (`A.botin`); se recoge con clic de cerca
+  y va a la mochila del héroe. **Pendiente:** venderlo (necesita la tienda, Fase 5); cadáver con 30 s
+  y derechos de botín (ahora el saquito es permanente y sin dueño).
 
 ### Fase 4 — Pueblo + más pantallas
 Área "pueblo" (como Millford) con sus salas y portal desde el campo, reutilizando áreas+salas de
@@ -250,11 +257,22 @@ Reparación (herrero), curación (sanador), subir de nivel/entrenar (entrenador)
 HP/MP/XP/nivel + HUD. Regeneración pasiva (+1/+1 cada 30 s). Niveles (XP + promedio de stats, muros
 5/10/15/20). Entrenamiento con oro. Títulos por profesión.
 
-### Fase 7 — Combate (motor portado del MUD)
-`servidor/combate.js` con las fórmulas de arriba; rondas automáticas, iniciativa, acierto/crítico,
-6 niveles + crítico, durabilidad, sangrado/vendaje, huida. Visualizado con las poses existentes
-(`espada1/2` ataque, `caido` sangrando/KO, `victoria` al ganar) + texto flotante de daño/emote.
-Recompensas: oro, XP, botín al cadáver (30 s, derechos de botín de quien peleó).
+### Fase 7 — Combate (motor portado del MUD)  🔨 EN CURSO
+Hecho (`datos/combate.js` + prueba en pantalla, verificado en Node):
+- **Motor portado fiel** (`FZ.combate`): `resolverAtaque` (acierto/crítico/daño con jitter, 6 niveles
+  por rango), `aplicarDanio` (sangrado al caer, muerte a −15), `MotorCombate` por pasos (rondas
+  automáticas, iniciativa) y `simular`. Balance validado: desnudo vs ciervo **93 %** (= hallazgo del
+  MUD), armado vs rata 100 %, armado vs bestia 48 %.
+- **Emotes en español** (2ª persona cuando ataca el jugador).
+- **Prueba jugable en `index.html`:** un rival (guardián "oculto") en la pantalla inicial; al acercarte
+  empieza el combate por rondas (~1 s), con animación de golpe (`espada2`), **barras de vida**, **texto
+  flotante** de daño/emote, `caido` al desangrarse y `victoria` al ganar. El rival reaparece a los 9 s.
+
+Pendiente en Fase 7:
+- Enemigos de verdad (cuando haya arte de bichos; hoy el rival es un guardián placeholder).
+- `kill`/rematar, vendar (`bandage`), huir con consecuencias; durabilidad al golpear; recompensas
+  (oro, XP, botín al cadáver 30 s con derechos de quien peleó); mover el motor al servidor (Fase 0).
+- Que el sprite del héroe refleje el equipo (hoy es el aspecto humano fijo pese a lo equipado).
 
 ### Fase 8 — NPCs
 Enemigos con IA simple + tick de respawn (10 min), diálogos, tenderos; las estaciones del pueblo.

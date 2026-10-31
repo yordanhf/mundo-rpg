@@ -53,6 +53,12 @@
 <script src="./motor/nucleo.js"></script>
 <script src="./motor/arte-escenario.js"></script>
 <script src="./motor/arte-personaje.js"></script>
+<script src="./motor/arte-bichos.js"></script>
+<!-- DATOS + LÓGICA (en ./datos/): ítems, personaje, NPCs y el motor de combate. -->
+<script src="./datos/items.js"></script>
+<script src="./datos/personaje.js"></script>
+<script src="./datos/npcs.js"></script>
+<script src="./datos/combate.js"></script>
 
 <script>
 /* =============================================================================
@@ -120,6 +126,11 @@
   for (const p of ['verde', 'lima', 'oscura', 'manzana']) for (const s of [2, 7]) { const nm = 'arv_' + p + '_' + s; definir(nm, () => A.arbol(p, s, 1)); ARB.push(nm); }
   const ESC = A.GUARDIAN_ESCALA || 0.62;
   ['anda1', 'anda2', 'atento'].forEach((pose) => definir('g_' + pose, () => A.guardian(pose), ESC));
+  // poses de combate del héroe
+  ['espada1', 'espada2', 'caido', 'victoria'].forEach((pose) => definir('g_' + pose, () => A.guardian(pose), ESC));
+  // bichos (enemigos): arte en ./motor/arte-bichos.js
+  for (const b of ['rata', 'ciervo', 'bestia', 'serpiente', 'murcielago']) if (A[b]) definir(b, () => A[b](1.0));
+  if (A.botin) definir('botin', () => A.botin(1.0));   // marcador de botín en el suelo
 
   // entrada de cueva: arte propia del proyecto, con el mismo estilo del motor (volumen + sombra índigo)
   function arteCueva() {
@@ -225,6 +236,101 @@
   const VEL = 190;
   let trans = null, fade = 0, listo = false;   // trans = transición de portal; fade = 0..1 (negro)
 
+  /* ============================== combate (Fase 7) ==============================
+   * Enemigos por pantalla: un bandido (guardián "oculto", con poses) en la sala inicial y una rata
+   * (bicho de un solo sprite) en la sala de la derecha. Acércate y empieza el combate por rondas
+   * automáticas (motor en ./datos/combate.js, fórmulas del MUD). */
+  const D = FZ.datos, K = FZ.combate;
+  const COMBATE_OK = !!(D && K && D.crearPersonaje && K.MotorCombate);
+  const RANGO = 58;
+  let combate = null, flotantes = [];
+  const heroePj = COMBATE_OK ? D.crearPersonaje({ nombre: 'Tú' }) : null;
+  if (heroePj) { heroePj.empunarArma('espada_corta'); heroePj.equiparArmadura('chaleco_cuero'); heroePj.equiparArmadura('gorro_cuero'); heroePj.mochila = D.ITEMS.petate; }
+  const botines = [];   // botín soltado en el suelo (sin recoger): { area, qx, qy, sx, sy, item }
+  // un animal por pantalla; la primera sala del campo (0,0) queda VACÍA. Cada uno en un ancla
+  // (centro de la diagonal centro↔esquina), no en el centro.
+  const BICHOS_EN = [
+    { area: 'campo', qx: 1, qy: 0, npc: 'rata',       ancla: 'inf-izq' },
+    { area: 'campo', qx: 0, qy: 1, npc: 'ciervo',     ancla: 'inf-der' },
+    { area: 'campo', qx: 1, qy: 1, npc: 'bestia',     ancla: 'sup-der' },
+    { area: 'cueva', qx: 0, qy: 0, npc: 'serpiente',  ancla: 'inf-der' },
+    { area: 'cueva', qx: 1, qy: 0, npc: 'murcielago', ancla: 'sup-izq' },
+  ];
+  const enemigos = [];
+  if (COMBATE_OK) for (const d of BICHOS_EN) {
+    const ar = AREAS[d.area]; if (!ar || !A[d.npc] || !sprites[d.npc]) continue;
+    const c = ar.centro(d.qx, d.qy), an = ANCLAS[d.ancla] || [0, 0];
+    enemigos.push({ area: ar, qx: d.qx, qy: d.qy, sx: c[0] + an[0] * vw, sy: c[1] + an[1] * vh,
+      sprite: d.npc, animal: true, crear: () => D.crearNPC(d.npc), pj: D.crearNPC(d.npc), vivo: true, respawn: 0 });
+  }
+  const enemigoEnPantalla = () => enemigos.find((e) => e.vivo && e.area === actual.area && e.qx === actual.qx && e.qy === actual.qy) || null;
+  const posDe = (pj) => (pj === heroePj ? [heroe.x, heroe.y] : [combate.enemigo.sx, combate.enemigo.sy]);
+  function iniciarCombate(ent) {
+    // no se cura al héroe ni se recrea al enemigo: si antes huiste, se conserva el daño de ambos
+    heroe.ax = heroe.ay = null;
+    heroe.mirando = ent.sx >= heroe.x ? 1 : -1;
+    combate = { enemigo: ent, motor: new K.MotorCombate(heroePj, ent.pj, Math.random), t: 0.7, swing: null, finT: 0 };
+    sub.textContent = '¡Combate! vs ' + ent.pj.nombre + '  ·  sal de la pantalla para huir';
+  }
+  // parar el combate como una HUIDA (al salir de la pantalla): sin ganador, el HP de ambos se conserva.
+  function pararCombate() { if (combate) combate = null; }
+  function cerrarCombate() {
+    const ent = combate.enemigo, g = combate.motor.ganador;
+    if (g === heroePj) {
+      ent.vivo = false; ent.respawn = performance.now() + 9000;   // desaparece al instante; reaparece a los 9 s
+      if (ent.pj.loot) botines.push({ area: ent.area, qx: ent.qx, qy: ent.qy, sx: ent.sx, sy: ent.sy, item: ent.pj.loot });
+      sub.textContent = '¡Has vencido a ' + ent.pj.nombre + '!' + (ent.pj.loot ? '  Suelta: ' + ent.pj.loot.nombre : '');
+    } else { heroePj.hp = heroePj.maxHp; heroePj.sangrando = false; heroePj.muerto = false; sub.textContent = 'Te han derrotado… te recuperas.'; }
+    combate = null;
+  }
+  function flotante(ev) {
+    const quien = ev.res.acierto ? ev.defensor : ev.atacante, p = posDe(quien);
+    const fuerte = ev.res.nivel === 'critico' || ev.res.nivel === 'masacre';
+    flotantes.push({ texto: ev.res.acierto ? ('-' + ev.res.danio) : 'falla', wx: p[0], wy: p[1], t: 1.0,
+      color: !ev.res.acierto ? '#d7dcea' : fuerte ? '#ffd23f' : '#ff6b6b' });
+  }
+  function tickCombate(dt, ts) {
+    const cb = combate;
+    if (cb.swing && ts > cb.swing.hasta) cb.swing = null;
+    cb.t -= dt;
+    if (cb.t <= 0) {
+      cb.t = 1.1;
+      const ev = cb.motor.paso();
+      if (ev.tipo === 'ataque') { cb.swing = { quien: ev.atacante, hasta: ts + 360 }; flotante(ev); if (ev.texto) sub.textContent = ev.texto; }
+      if (cb.motor.terminado) cerrarCombate();   // se acaba al instante: el bicho desaparece ya
+    }
+  }
+  function poseCombate(pj) {
+    const cb = combate;
+    if (pj.muerto || pj.sangrando) return (cb.motor.terminado && cb.motor.ganador === pj) ? 'victoria' : 'caido';
+    if (cb.motor.terminado && cb.motor.ganador === pj) return 'victoria';
+    if (cb.swing && cb.swing.quien === pj) return 'espada2';
+    return 'atento';
+  }
+  // dibuja un enemigo: el guardián usa sus poses; un "animal" es un solo sprite (embiste con un
+  // empujón y, caído, se dibuja tumbado girándolo sobre el pie).
+  function dibujarEnemigo(ent) {
+    const flip = ent.sx > heroe.x, enC = combate && combate.enemigo === ent;
+    if (!ent.animal) { sprite('e_' + (enC ? poseCombate(ent.pj) : 'atento'), ent.sx, ent.sy, 0, flip); return; }
+    if (enC && (ent.pj.sangrando || ent.pj.muerto)) {
+      const sp = sprites[ent.sprite], bmp = bmps[ent.sprite]; if (!sp || !bmp || !bmp.width) return;
+      const s = RS;
+      ctx.save(); ctx.translate(DX(ent.sx), DY(ent.sy)); ctx.rotate((flip ? -1 : 1) * 1.25);
+      ctx.drawImage(bmp, sp.bb.x * s, sp.bb.y * s, sp.bb.w * s, sp.bb.h * s); ctx.restore();
+      return;
+    }
+    const dx = (enC && combate.swing && combate.swing.quien === ent.pj) ? (flip ? -7 : 7) : 0;
+    sprite(ent.sprite, ent.sx + dx, ent.sy, 0, flip);
+  }
+  function barraVida(pj) {
+    const p = posDe(pj), X = DX(p[0]), Y = DY(p[1]) - 78 * RS, w = 46 * RS, h = 6 * RS;
+    const frac = Math.max(0, pj.hp) / pj.maxHp;
+    ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(X - w / 2 - 1, Y - 1, w + 2, h + 2);
+    ctx.fillStyle = '#3a2d2d'; ctx.fillRect(X - w / 2, Y, w, h);
+    ctx.fillStyle = pj.sangrando ? '#c0392b' : frac > 0.5 ? '#5ec46a' : frac > 0.25 ? '#e6c84a' : '#e05a4a';
+    ctx.fillRect(X - w / 2, Y, w * frac, h);
+  }
+
   const DX = (wx) => (wx - cam.x) * cam.z * dpr + cw / 2;
   const DY = (wy) => (wy - cam.y) * cam.z * dpr + ch / 2;
   const mundo = (sx, sy) => [(sx - W / 2) / cam.z + cam.x, (sy - H / 2) / cam.z + cam.y];
@@ -241,7 +347,7 @@
   window.addEventListener('resize', redimensionar);
 
   cv.addEventListener('pointerdown', (e) => {
-    if (cam.tween || trans) return;   // en transición no se camina
+    if (cam.tween || trans || combate) return;   // en transición o en combate no se camina
     const r = cv.getBoundingClientRect();
     const w = mundo(e.clientX - r.left, e.clientY - r.top);
     // ¿tocaste la puerta de la cueva de esta sala? entonces entra
@@ -249,6 +355,29 @@
     if (sal && sal.obj) {
       const b = sprites[sal.sprite || 'cueva'].bb;
       if (w[0] >= sal.obj.sx + b.x && w[0] <= sal.obj.sx + b.x + b.w && w[1] >= sal.obj.sy + b.y && w[1] <= sal.obj.sy + b.y + b.h) { irPortal(); return; }
+    }
+    // ¿clic sobre un enemigo de esta sala? si estás CERCA, atácalo; si no, camina hacia él (sin atacar)
+    if (COMBATE_OK) for (const en of enemigos) {
+      if (!en.vivo || en.area !== actual.area || en.qx !== actual.qx || en.qy !== actual.qy) continue;
+      const bb = sprites[en.sprite].bb;
+      if (w[0] >= en.sx + bb.x && w[0] <= en.sx + bb.x + bb.w && w[1] >= en.sy + bb.y && w[1] <= en.sy + bb.y + bb.h) {
+        if (Math.hypot(en.sx - heroe.x, en.sy - heroe.y) < RANGO) { iniciarCombate(en); return; }
+        break;   // lejos: no ataca; cae al movimiento de abajo y camina hacia él
+      }
+    }
+    // ¿clic sobre un botín de esta sala? si estás cerca, recógelo; si no, camina hacia él
+    if (COMBATE_OK && sprites.botin) for (const bt of botines) {
+      if (bt.area !== actual.area || bt.qx !== actual.qx || bt.qy !== actual.qy) continue;
+      const bb = sprites.botin.bb;
+      if (w[0] >= bt.sx + bb.x && w[0] <= bt.sx + bb.x + bb.w && w[1] >= bt.sy + bb.y && w[1] <= bt.sy + bb.y + bb.h) {
+        if (Math.hypot(bt.sx - heroe.x, bt.sy - heroe.y) < RANGO) {
+          const res = heroePj.guardarEnMochila(bt.item);
+          if (res.ok) { botines.splice(botines.indexOf(bt), 1); sub.textContent = 'Recoges: ' + bt.item.nombre + '  (mochila ' + heroePj.bulkMochilaUsado().toFixed(2) + '/' + heroePj.mochila.capacidad + ')'; }
+          else sub.textContent = res.error;
+          return;
+        }
+        break;
+      }
     }
     heroe.ax = V.clamp(w[0], PAD, actual.area.spanx - PAD);
     heroe.ay = V.clamp(w[1], PAD, actual.area.spany - PAD);
@@ -269,6 +398,7 @@
   function irA(qx, qy) {
     const a = actual.area;
     if (trans || cam.tween || qx < 0 || qx >= a.cols || qy < 0 || qy >= a.rows) return;
+    if (combate) pararCombate();   // salir de la pantalla = huir: el combate se para, el HP se conserva
     actual.qx = qx; actual.qy = qy;
     const c = a.centro(qx, qy);
     cam.tween = { x0: cam.x, y0: cam.y, x1: c[0], y1: c[1], t0: performance.now(), ms: 560 };
@@ -280,6 +410,7 @@
   function irPortal() {
     const sal = salidaActual();
     if (!sal || trans || cam.tween) return;
+    if (combate) pararCombate();   // cruzar un portal también corta el combate (huida)
     trans = { t0: performance.now(), ms: 520, sal, hecho: false };
     heroe.ax = heroe.ay = null;
     actualizarBotones();
@@ -361,15 +492,44 @@
     }
     if (cam.tween) { heroe.x = cam.x; heroe.y = cam.y; }   // viaja con el mapa en el pan
 
+    // --- combate: se inicia al hacer CLIC sobre un enemigo (ver pointerdown) ---
+    if (COMBATE_OK) {
+      for (const e of enemigos) if (!e.vivo && e.respawn && ts > e.respawn) { e.vivo = true; e.respawn = 0; e.pj = e.crear(); }
+      if (combate) tickCombate(dt, ts);
+      for (const f of flotantes) { f.t -= dt; f.wy -= dt * 22; }
+      flotantes = flotantes.filter((f) => f.t > 0);
+    }
+
     suelo();
     const lista = actual.area.objetos.slice();
     lista.push({ heroe: true, d: V.depthPx(heroe.x, heroe.y) });
+    if (COMBATE_OK) for (const e of enemigos) {
+      if (e.area === actual.area && e.qx === actual.qx && e.qy === actual.qy && (e.vivo || (combate && combate.enemigo === e)))
+        lista.push({ ente: e, d: V.depthPx(e.sx, e.sy) });
+    }
+    if (COMBATE_OK) for (const bt of botines) {
+      if (bt.area === actual.area && bt.qx === actual.qx && bt.qy === actual.qy) lista.push({ botin: bt, d: V.depthPx(bt.sx, bt.sy) });
+    }
     lista.sort((a, b) => a.d - b.d);
-    const bob = heroe.andando ? -Math.abs(Math.sin(ts / 110)) * 2 : 0;
-    const pose = heroe.andando ? (Math.floor(ts / 170) % 2 ? 'anda1' : 'anda2') : 'atento';
+    const andando = heroe.andando && !combate;
+    const bob = andando ? -Math.abs(Math.sin(ts / 110)) * 2 : 0;
+    const pose = combate ? poseCombate(heroePj) : (andando ? (Math.floor(ts / 170) % 2 ? 'anda1' : 'anda2') : 'atento');
     for (const o of lista) {
       if (o.heroe) sprite('g_' + pose, heroe.x, heroe.y, bob, heroe.mirando < 0);
+      else if (o.ente) dibujarEnemigo(o.ente);
+      else if (o.botin) sprite('botin', o.botin.sx, o.botin.sy);
       else sprite(o.nombre, o.sx, o.sy);
+    }
+    // barras de vida + texto flotante (espacio de pantalla, por encima de todo)
+    if (COMBATE_OK && combate) { barraVida(heroePj); barraVida(combate.enemigo.pj); }
+    if (COMBATE_OK && flotantes.length) {
+      ctx.textAlign = 'center';
+      for (const f of flotantes) {
+        ctx.globalAlpha = Math.min(1, f.t); ctx.fillStyle = f.color;
+        ctx.font = '700 ' + Math.round(15 * RS) + 'px system-ui, sans-serif';
+        ctx.fillText(f.texto, DX(f.wx), DY(f.wy) - 46 * RS); ctx.globalAlpha = 1;
+      }
+      ctx.textAlign = 'left';
     }
     if (fade > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fade + ')'; ctx.fillRect(0, 0, cw, ch); }
 
