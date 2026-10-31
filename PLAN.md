@@ -217,12 +217,23 @@ Hecho (primer ladrillo, `datos/items.js`, verificado en Node):
 - **Totales de combate** (`D.totalesCombate`): suma Absorb/Deflect (tope 100 cada una) + stats del arma.
 - La cicatriz se quitó del humano base (sigue en los presets legados `comun`/`rara`).
 
+Hecho (segundo ladrillo, `datos/personaje.js`, verificado en Node, 27 casos):
+- **`D.Personaje`** (JS puro): identidad (nombre, raza, nivel), stats/skills, HP/MP, oro, XP.
+- **`statEfectivo(tipo)`** con bono de raza en % (solo a stats, no a skills) y tope 125. **`D.RAZAS`**
+  con las 5 razas del MUD (de momento solo `humano` en juego; el resto, listo).
+- **Equipo por ranura** (`equiparArmadura`/`quitarArmadura`), **armas** (`empunarArma`/`envainarArma`),
+  **manos** (pool de 2 bulk; el escudo cuesta mano aunque esté puesto), **armadura en mano**, **mochila**
+  (`guardarEnMochila` con capacidad). Rechazos correctos (ranura ocupada, sin mano libre, no cabe…).
+- **Economía/XP**: `ganarOro`/`gastarOro`/`ganarXP`; helpers de progresión del MUD (`xpRequerida`,
+  `promedioStatRequerido`, `topeEntrenamiento`), aún sin auto-nivelar.
+- **`totales()`** (defensa + arma) y **`aspecto()`** (compone el equipo visual y lo pasa a `A.guardian`).
+
 Pendiente en Fase 2:
-- `Personaje` en JS: stats/skills, HP/MP, equipo por ranura, manos, mochila, oro, XP, nivel.
-- Inventario con bulk (manos pool 2, mochila con capacidad), funda, armadura en mano; durabilidad en runtime.
+- Durabilidad en runtime (se gasta al golpear/recibir); reparación (herrero, Fase 5).
+- Cargar el `Personaje` desde/hacia SQLite (depende de Fase 0).
 - **Decisión de arte (abierta):** el set de cuero y las 3 armas reutilizan piezas visuales de la Fase 1
-  como placeholder (un gorro usa la capucha marrón, las armas comparten la espada base). ¿Diseñamos
-  arte propia para los ítems mundanos, o sirve el placeholder de momento?
+  como placeholder (un gorro usa la capucha marrón, las armas comparten la espada base). Arte propia
+  de los ítems mundanos: pendiente para una pasada visual más adelante.
 
 ### Fase 3 — Economía: el oro
 Oro del jugador + HUD. Comprar 100% / vender 25% (mín 1, tope 50). Botín de NPCs al cadáver.
