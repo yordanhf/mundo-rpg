@@ -274,13 +274,17 @@
   }
   // parar el combate como una HUIDA (al salir de la pantalla): sin ganador, el HP de ambos se conserva.
   function pararCombate() { if (combate) combate = null; }
+  // se decide por quién ha CAÍDO (sangrando o muerto), no por el desangrado: así el bicho muere al instante
   function cerrarCombate() {
-    const ent = combate.enemigo, g = combate.motor.ganador;
-    if (g === heroePj) {
-      ent.vivo = false; ent.respawn = performance.now() + 9000;   // desaparece al instante; reaparece a los 9 s
-      if (ent.pj.loot) botines.push({ area: ent.area, qx: ent.qx, qy: ent.qy, sx: ent.sx, sy: ent.sy, item: ent.pj.loot });
-      sub.textContent = '¡Has vencido a ' + ent.pj.nombre + '!' + (ent.pj.loot ? '  Suelta: ' + ent.pj.loot.nombre : '');
-    } else { heroePj.hp = heroePj.maxHp; heroePj.sangrando = false; heroePj.muerto = false; sub.textContent = 'Te han derrotado… te recuperas.'; }
+    const ent = combate.enemigo, en = ent.pj;
+    if (en.sangrando || en.muerto) {          // el enemigo ha caído → victoria, desaparece ya
+      ent.vivo = false; ent.respawn = performance.now() + 9000;   // reaparece a los 9 s
+      if (en.loot) botines.push({ area: ent.area, qx: ent.qx, qy: ent.qy, sx: ent.sx, sy: ent.sy, item: en.loot });
+      sub.textContent = '¡Has vencido a ' + en.nombre + '!' + (en.loot ? '  Suelta: ' + en.loot.nombre : '');
+    } else {                                   // ha caído el héroe → derrota (se recupera)
+      heroePj.hp = heroePj.maxHp; heroePj.sangrando = false; heroePj.muerto = false;
+      sub.textContent = 'Te han derrotado… te recuperas.';
+    }
     combate = null;
   }
   function flotante(ev) {
@@ -297,7 +301,8 @@
       cb.t = 1.1;
       const ev = cb.motor.paso();
       if (ev.tipo === 'ataque') { cb.swing = { quien: ev.atacante, hasta: ts + 360 }; flotante(ev); if (ev.texto) sub.textContent = ev.texto; }
-      if (cb.motor.terminado) cerrarCombate();   // se acaba al instante: el bicho desaparece ya
+      // termina en cuanto alguien cae (sin esperar el desangrado): el bicho muere al instante
+      if (cb.motor.terminado || cb.enemigo.pj.sangrando || cb.enemigo.pj.muerto || heroePj.sangrando || heroePj.muerto) cerrarCombate();
     }
   }
   function poseCombate(pj) {
